@@ -14,8 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import DateTimePicker from '@react-native-community/datetimepicker';
-
 import { Button, Input, Card } from '@/components/ui';
 import { Steppie, SpeechBubble } from '@/components/characters';
 import { colors, typography, spacing, borderRadius } from '@/utils/theme';
@@ -162,17 +160,20 @@ export default function AddChildScreen() {
                       : `${Math.floor(ageInMonths / 12)} year${Math.floor(ageInMonths / 12) > 1 ? 's' : ''} old`}
                 </Text>
               </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={watchedDate}
-                  mode="date"
-                  display="spinner"
-                  maximumDate={new Date()}
-                  onChange={(_, date) => {
-                    setShowDatePicker(Platform.OS === 'ios');
-                    if (date) setValue('dateOfBirth', date);
-                  }}
-                />
+              {showDatePicker && Platform.OS === 'web' && (
+                <View style={styles.webDatePicker}>
+                  <input
+                    type="date"
+                    max={new Date().toISOString().split('T')[0]}
+                    value={watchedDate.toISOString().split('T')[0]}
+                    onChange={(e) => {
+                      const date = new Date(e.target.value);
+                      setValue('dateOfBirth', date);
+                      setShowDatePicker(false);
+                    }}
+                    style={{ fontSize: 16, padding: 12, borderRadius: 12, border: '1px solid #E5E7EB', width: '100%' }}
+                  />
+                </View>
               )}
             </View>
 
@@ -363,5 +364,8 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: spacing[6],
+  },
+  webDatePicker: {
+    marginTop: spacing[2],
   },
 });
