@@ -1,0 +1,261 @@
+// LittleSteps Database Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  name          String
+  avatarUrl     String?   @map("avatar_url")
+  preferences   Json      @default("{}")
+  timezone      String    @default("UTC")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  children      Child[]
+  sessions      Session[]
+  streaks       Streak[]
+
+  @@map("users")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  token        String   @unique
+  deviceInfo   String?  @map("device_info")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================
+// CHILD PROFILES
+// ============================================
+
+model Child {
+  id              String      @id @default(uuid())
+  userId          String      @map("user_id")
+  name            String
+  dateOfBirth     DateTime    @map("date_of_birth")
+  gender          Gender?
+  avatarUrl       String?     @map("avatar_url")
+  color           String      @default("#8B5CF6") // Theme color for child
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones      Milestone[]
+  growthRecords   GrowthRecord[]
+  dailyLogs       DailyLog[]
+  photos          Photo[]
+
+  @@map("children")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// ============================================
+// MILESTONES
+// ============================================
+
+model Milestone {
+  id              String           @id @default(uuid())
+  childId         String           @map("child_id")
+  templateId      String?          @map("template_id")
+  category        MilestoneCategory
+  title           String
+  description     String?
+  ageMonthsMin    Int?             @map("age_months_min")
+  ageMonthsMax    Int?             @map("age_months_max")
+  achievedAt      DateTime?        @map("achieved_at")
+  notes           String?
+  photoUrl        String?          @map("photo_url")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  child           Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  template        MilestoneTemplate? @relation(fields: [templateId], references: [id])
+
+  @@map("milestones")
+}
+
+model MilestoneTemplate {
+  id              String            @id @default(uuid())
+  category        MilestoneCategory
+  title           String
+  description     String
+  ageMonthsMin    Int               @map("age_months_min")
+  ageMonthsMax    Int               @map("age_months_max")
+  iconName        String?           @map("icon_name")
+  order           Int               @default(0)
+  isActive        Boolean           @default(true) @map("is_active")
+
+  // Relations
+  milestones      Milestone[]
+
+  @@map("milestone_templates")
+}
+
+enum MilestoneCategory {
+  PHYSICAL
+  COGNITIVE
+  SOCIAL
+  LANGUAGE
+  EMOTIONAL
+  SELF_CARE
+}
+
+// ============================================
+// GROWTH TRACKING
+// ============================================
+
+model GrowthRecord {
+  id                String    @id @default(uuid())
+  childId           String    @map("child_id")
+  heightCm          Float?    @map("height_cm")
+  weightKg          Float?    @map("weight_kg")
+  headCircumferenceCm Float?  @map("head_circumference_cm")
+  recordedAt        DateTime  @map("recorded_at")
+  notes             String?
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  child             Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("growth_records")
+}
+
+// ============================================
+// DAILY TRACKING (Sleep, Feed, Diaper)
+// ============================================
+
+model DailyLog {
+  id          String      @id @default(uuid())
+  childId     String      @map("child_id")
+  type        LogType
+  data        Json        // Flexible JSON for different log types
+  startedAt   DateTime?   @map("started_at")
+  endedAt     DateTime?   @map("ended_at")
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  child       Child       @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("daily_logs")
+}
+
+enum LogType {
+  SLEEP
+  FEED_BREAST
+  FEED_BOTTLE
+  FEED_SOLID
+  DIAPER_WET
+  DIAPER_DIRTY
+  DIAPER_MIXED
+  MEDICATION
+  SYMPTOM
+  ACTIVITY
+}
+
+// ============================================
+// PHOTOS & MEMORIES
+// ============================================
+
+model Photo {
+  id          String    @id @default(uuid())
+  childId     String    @map("child_id")
+  url         String
+  thumbnailUrl String?  @map("thumbnail_url")
+  caption     String?
+  takenAt     DateTime  @map("taken_at")
+  milestoneId String?   @map("milestone_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  child       Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("photos")
+}
+
+// ============================================
+// CONTENT & TIPS
+// ============================================
+
+model Tip {
+  id            String    @id @default(uuid())
+  title         String
+  content       String
+  ageMonthsMin  Int       @map("age_months_min")
+  ageMonthsMax  Int       @map("age_months_max")
+  category      String
+  iconName      String?   @map("icon_name")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("tips")
+}
+
+model Article {
+  id            String    @id @default(uuid())
+  title         String
+  slug          String    @unique
+  excerpt       String
+  content       String
+  imageUrl      String?   @map("image_url")
+  category      String
+  tags          String[]
+  readTimeMin   Int       @map("read_time_min")
+  ageMonthsMin  Int?      @map("age_months_min")
+  ageMonthsMax  Int?      @map("age_months_max")
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("articles")
+}
+
+// ============================================
+// GAMIFICATION
+// ============================================
+
+model Streak {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  type        String    // daily_checkin, milestone_logging, etc.
+  currentCount Int      @default(0) @map("current_count")
+  longestCount Int      @default(0) @map("longest_count")
+  lastUpdated DateTime  @map("last_updated")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@map("streaks")
+}
